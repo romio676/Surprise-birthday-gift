@@ -1,0 +1,157 @@
+'use client'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import confetti from 'canvas-confetti'
+import { Lock, Heart } from 'lucide-react'
+
+type Stage = 'lock' | 'countdown' | 'welcome' | 'story' | 'finale'
+
+export default function UnlockExperience({ meta }: { meta: any }) {
+  const [stage, setStage] = useState<Stage>('lock')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function unlock() {
+    setLoading(true); setError('')
+    const res = await fetch('/api/unlock', {
+      method: 'POST',
+      body: JSON.stringify({ slug: meta.slug, password }),
+    })
+    const json = await res.json()
+    setLoading(false)
+    if (!res.ok) return setError(json.error)
+    setData(json)
+    setStage('countdown')
+  }
+
+  function fireConfetti() {
+    const end = Date.now() + 2500
+    const colors = ['#FF4F81', '#FFD700', '#8A2BE2']
+    ;(function frame() {
+      confetti({ particleCount: 4, angle: 60, spread: 70, origin: { x: 0 }, colors })
+      confetti({ particleCount: 4, angle: 120, spread: 70, origin: { x: 1 }, colors })
+      if (Date.now() < end) requestAnimationFrame(frame)
+    })()
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0A0A0A] text-white overflow-hidden relative">
+      <FloatingParticles />
+      <AnimatePresence mode="wait">
+        {stage === 'lock' && (
+          <motion.section key="lock"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
+            <Lock className="w-12 h-12 text-[#FFD700] mb-6" />
+            <h1 className="font-[Dancing_Script] text-4xl md:text-5xl text-[#FF4F81] mb-4">
+              {meta.cover_title || 'A Surprise Awaits You'}
+            </h1>
+            <p className="max-w-md text-white/70 mb-8">
+              Someone who loves you created something special for you.
+              Enter the secret password to unlock your surprise.
+            </p>
+            {meta.visibility === 'password' && (
+              <input type="password" value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && unlock()}
+                placeholder="Secret password"
+                className="bg-white/10 border border-white/20 rounded-full px-6 py-3 mb-4 outline-none focus:border-[#FFD700] text-center" />
+            )}
+            {error && <p className="text-red-400 mb-3">{error}</p>}
+            <button onClick={unlock} disabled={loading}
+              className="bg-gradient-to-r from-[#FF4F81] to-[#8A2BE2] px-8 py-3 rounded-full font-semibold hover:scale-105 transition disabled:opacity-50">
+              {loading ? 'Unlocking…' : 'Unlock My Surprise'}
+            </button>
+          </motion.section>
+        )}
+
+        {stage === 'countdown' && (
+          <Countdown onDone={() => { setStage('welcome'); fireConfetti() }} />
+        )}
+
+        {stage === 'welcome' && (
+          <motion.section key="welcome"
+            initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="relative z-10 flex flex-col items-center justify-center min-h-screen text-center px-6">
+            <Heart className="w-16 h-16 text-[#FF4F81] mb-6 animate-pulse" fill="#FF4F81" />
+            <h1 className="font-[Dancing_Script] text-5xl md:text-7xl text-[#FFD700] mb-6">
+              Happy Birthday, {data.page.birthday_person_name}!
+            </h1>
+            <p className="max-w-xl text-white/80 text-lg mb-10 whitespace-pre-line">
+              {data.page.special_message}
+            </p>
+            <button onClick={() => setStage('story')}
+              className="bg-gradient-to-r from-[#FFD700] to-[#FF4F81] text-black px-8 py-3 rounded-full font-semibold hover:scale-105 transition">
+              Begin the Journey →
+            </button>
+          </motion.section>
+        )}
+
+        {stage === 'story' && (
+          <Story media={data.media} onFinale={() => { setStage('finale'); fireConfetti() }} />
+        )}
+
+        {stage === 'finale' && (
+          <motion.section key="finale"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="relative z-10 flex items-center justify-center min-h-screen text-center px-6">
+            <h1 className="font-[Dancing_Script] text-4xl md:text-6xl text-[#FF4F81] max-w-2xl leading-relaxed">
+              You are loved more than you know.<br />Happy Birthday. 💖
+            </h1>
+          </motion.section>
+        )}
+      </AnimatePresence>
+    </main>
+  )
+}
+
+function Countdown({ onDone }: { onDone: () => void }) {
+  const [n, setN] = useState(5)
+  if (n === 0) { setTimeout(onDone, 600); }
+  setTimeout(() => n > 0 && setN(n - 1), 1000)
+  return (
+    <section className="relative z-10 flex items-center justify-center min-h-screen">
+      <motion.span key={n} initial={{ scale: 2, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="text-9xl font-bold text-[#FFD700]">{n || '✨'}</motion.span>
+    </section>
+  )
+}
+
+function Story({ media, onFinale }: { media: any[]; onFinale: () => void }) {
+  const photos = media.filter((m) => m.type === 'photo')
+  return (
+    <section className="relative z-10 min-h-screen py-20 px-6">
+      <h2 className="text-center font-[Dancing_Script] text-4xl text-[#FFD700] mb-12">Our Memories</h2>
+      <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 max-w-5xl mx-auto">
+        {photos.map((p, i) => (
+          <motion.img key={p.id} src={p.url} alt={p.caption ?? ''}
+            initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ delay: i * 0.05 }}
+            className="w-full rounded-2xl mb-4 break-inside-avoid hover:scale-[1.02] transition" />
+        ))}
+      </div>
+      <div className="text-center mt-16">
+        <button onClick={onFinale}
+          className="bg-gradient-to-r from-[#FF4F81] to-[#8A2BE2] px-10 py-4 rounded-full font-semibold text-lg hover:scale-105 transition">
+          See Your Final Surprise 🎆
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function FloatingParticles() {
+  return (
+    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+      {Array.from({ length: 30 }).map((_, i) => (
+        <motion.div key={i}
+          className="absolute w-1 h-1 rounded-full bg-[#FFD700]/60"
+          style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+          animate={{ y: [0, -30, 0], opacity: [0.2, 1, 0.2] }}
+          transition={{ duration: 3 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 3 }} />
+      ))}
+    </div>
+  )
+}
