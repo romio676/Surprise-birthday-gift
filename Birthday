@@ -1,3 +1,257 @@
+#!/usr/bin/env bash
+set -e
+
+APP="eternal-birthday"
+echo "Creating Next.js app..."
+npx create-next-app@latest "$APP" --typescript --tailwind --app --eslint --no-src-dir --import-alias "@/*" --yes
+
+cd "$APP"
+
+echo "Installing dependencies..."
+npm install @supabase/supabase-js @supabase/ssr framer-motion canvas-confetti lucide-react
+npm install -D @types/canvas-confetti
+
+echo "Writing files..."
+
+mkdir -p lib/supabase app/api/unlock "app/s/[slug]"
+
+# ---------- .env.local ----------
+cat > .env.local <<'EOF'
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+EOF
+
+# ---------- schema.sql ----------
+cat > schema.sql <<'EOF'
+create table profiles (
+  id uuid primary key references auth.users on delete cascade,
+  email text,
+  display_name text,
+  plan text default 'free' check (plan in ('free','premium')),
+  created_at timestamptz default now()
+);
+
+create table surprise_pages (
+  id uuid primary key default gen_random_uuid(),
+  creator_id uuid references auth.users on delete cascade,
+  slug text unique not null,
+  birthday_person_name text not null,
+  birthday_date date,
+  relationship text,
+  cover_title text,
+  special_message text,
+  password_hash text,
+  visibility text default 'private' check (visibility in ('private','password','public')),
+  background_music_url text,
+  created_at timestamptz default now()
+);
+
+create table media (
+  id uuid primary key default gen_random_uuid(),
+  page_id uuid references surprise_pages on delete cascade,
+  type text not null check (type in ('photo','video','voice')),
+  storage_path text not null,
+  caption text,
+  sort_order int default 0,
+  created_at timestamptz default now()
+);
+
+create table guestbook_messages (
+  id uuid primary key default gen_random_uuid(),
+  page_id uuid references surprise_pages on delete cascade,
+  author_name text not null,
+  message text not null,
+  emoji text,
+  created_at timestamptz default now()
+);
+
+create table analytics (
+  id uuid primary key default gen_random_uuid(),
+  page_id uuid references surprise_pages on delete cascade,
+  event text not null,
+  created_at timestamptz default now()
+);
+
+alter table profiles enable row level security;
+alter table surprise_pages enable row level security;
+alter table media enable row level security;
+alter table guestbook_messages enable row level security;
+
+create policy "own profile" on profiles for all using (auth.uid() = id);
+create policy "creator manages pages" on surprise_pages for all using (auth.uid() = creator_id);
+create policy "read public pages" on surprise_pages for select using (visibility = 'public');
+create policy "creator reads media" on media for all using (
+  exists (select 1 from surprise_pages p where p.id = media.page_id and p.creator_id = auth.uid())
+);
+create policy "anyone reads guestbook" on guestbook_messages for select using (true);
+create policy "anyone signs guestbook" on guestbook_messages for insert with check (true);
+EOF
+
+# ---------- lib/supabase/server.ts ----------
+cat > lib/supabase/server.ts <<'EOF'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+export async function createClient() {
+  const cookieStore = await cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (toSet) => {
+          try {
+            toSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options))
+          } catch {}
+        },
+      },
+    }
+  )
+}
+EOF
+
+# ---------- lib/supabase/client.ts ----------
+cat > lib/supabase/client.ts <<'EOF'
+import { createBrowserClient } from '@supabase/ssr'
+
+export const createClient = () =>
+  createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+EOF
+
+# ---------- lib/supabase/admin.ts ----------
+cat > lib/supabase/admin.ts <<'EOF'
+import { createClient } from '@supabase/supabase-js'
+
+export const adminClient = () =>
+  createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+EOF
+
+# ---------- lib/crypto.ts ----------
+cat > lib/crypto.ts <<'EOF'
+import { scrypt, randomBytes, timingSafeEqual } from 'crypto'
+import { promisify } from 'util'
+const scryptAsync = promisify(scrypt)
+
+export async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString('hex')
+  const derived = (await scryptAsync(password, salt, 64)) as Buffer
+  return `${salt}:${derived.toString('hex')}`
+}
+
+export async function verifyPassword(password: string, stored: string) {
+  const [salt, key] = stored.split(':')
+  const derived = (await scryptAsync(password, salt, 64)) as Buffer
+  const keyBuf = Buffer.from(key, 'hex')
+  return keyBuf.length === derived.length && timingSafeEqual(keyBuf, derived)
+}
+EOF
+
+# ---------- middleware.ts ----------
+cat > middleware.ts <<'EOF'
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({ request })
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (toSet) => {
+          toSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          toSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options))
+        },
+      },
+    }
+  )
+  await supabase.auth.getUser()
+  return response
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+}
+EOF
+
+# ---------- app/api/unlock/route.ts ----------
+cat > app/api/unlock/route.ts <<'EOF'
+import { NextResponse } from 'next/server'
+import { adminClient } from '@/lib/supabase/admin'
+import { verifyPassword } from '@/lib/crypto'
+
+const attempts = new Map<string, { count: number; ts: number }>()
+const WINDOW = 60_000, MAX = 5
+
+function limited(ip: string) {
+  const now = Date.now()
+  const rec = attempts.get(ip)
+  if (!rec || now - rec.ts > WINDOW) { attempts.set(ip, { count: 1, ts: now }); return false }
+  rec.count++
+  return rec.count > MAX
+}
+
+export async function POST(req: Request) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown'
+  if (limited(ip)) return NextResponse.json({ error: 'Too many attempts. Try later.' }, { status: 429 })
+
+  const { slug, password } = await req.json()
+  const supabase = adminClient()
+  const { data: page } = await supabase
+    .from('surprise_pages').select('*').eq('slug', slug).single()
+  if (!page) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (page.visibility === 'password') {
+    if (!page.password_hash || !(await verifyPassword(password ?? '', page.password_hash)))
+      return NextResponse.json({ error: 'Wrong password' }, { status: 401 })
+  }
+
+  await supabase.from('analytics').insert({ page_id: page.id, event: 'unlock' })
+  const { data: media } = await supabase.from('media').select('*').eq('page_id', page.id).order('sort_order')
+
+  const withUrls = await Promise.all((media ?? []).map(async (m) => {
+    const { data } = await supabase.storage.from('media').createSignedUrl(m.storage_path, 3600)
+    return { ...m, url: data?.signedUrl }
+  }))
+
+  const { password_hash, ...safe } = page
+  return NextResponse.json({ page: safe, media: withUrls })
+}
+EOF
+
+# ---------- app/s/[slug]/page.tsx ----------
+cat > "app/s/[slug]/page.tsx" <<'EOF'
+import { adminClient } from '@/lib/supabase/admin'
+import UnlockExperience from './UnlockExperience'
+import { notFound } from 'next/navigation'
+
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const supabase = adminClient()
+  const { data: page } = await supabase
+    .from('surprise_pages')
+    .select('slug, cover_title, birthday_person_name, visibility')
+    .eq('slug', slug).single()
+  if (!page) notFound()
+  return <UnlockExperience meta={page} />
+}
+EOF
+
+# ---------- app/s/[slug]/UnlockExperience.tsx ----------
+cat > "app/s/[slug]/UnlockExperience.tsx" <<'EOF'
 'use client'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -45,7 +299,7 @@ export default function UnlockExperience({ meta }: { meta: any }) {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center">
             <Lock className="w-12 h-12 text-[#FFD700] mb-6" />
-            <h1 className="font-[Dancing_Script] text-4xl md:text-5xl text-[#FF4F81] mb-4">
+            <h1 className="text-4xl md:text-5xl text-[#FF4F81] mb-4">
               {meta.cover_title || 'A Surprise Awaits You'}
             </h1>
             <p className="max-w-md text-white/70 mb-8">
@@ -76,7 +330,7 @@ export default function UnlockExperience({ meta }: { meta: any }) {
             initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
             className="relative z-10 flex flex-col items-center justify-center min-h-screen text-center px-6">
             <Heart className="w-16 h-16 text-[#FF4F81] mb-6 animate-pulse" fill="#FF4F81" />
-            <h1 className="font-[Dancing_Script] text-5xl md:text-7xl text-[#FFD700] mb-6">
+            <h1 className="text-5xl md:text-7xl text-[#FFD700] mb-6">
               Happy Birthday, {data.page.birthday_person_name}!
             </h1>
             <p className="max-w-xl text-white/80 text-lg mb-10 whitespace-pre-line">
@@ -97,8 +351,8 @@ export default function UnlockExperience({ meta }: { meta: any }) {
           <motion.section key="finale"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="relative z-10 flex items-center justify-center min-h-screen text-center px-6">
-            <h1 className="font-[Dancing_Script] text-4xl md:text-6xl text-[#FF4F81] max-w-2xl leading-relaxed">
-              You are loved more than you know.<br />Happy Birthday. 💖
+            <h1 className="text-4xl md:text-6xl text-[#FF4F81] max-w-2xl leading-relaxed">
+              You are loved more than you know.<br />Happy Birthday.
             </h1>
           </motion.section>
         )}
@@ -109,7 +363,7 @@ export default function UnlockExperience({ meta }: { meta: any }) {
 
 function Countdown({ onDone }: { onDone: () => void }) {
   const [n, setN] = useState(5)
-  if (n === 0) { setTimeout(onDone, 600); }
+  if (n === 0) { setTimeout(onDone, 600) }
   setTimeout(() => n > 0 && setN(n - 1), 1000)
   return (
     <section className="relative z-10 flex items-center justify-center min-h-screen">
@@ -123,7 +377,7 @@ function Story({ media, onFinale }: { media: any[]; onFinale: () => void }) {
   const photos = media.filter((m) => m.type === 'photo')
   return (
     <section className="relative z-10 min-h-screen py-20 px-6">
-      <h2 className="text-center font-[Dancing_Script] text-4xl text-[#FFD700] mb-12">Our Memories</h2>
+      <h2 className="text-center text-4xl text-[#FFD700] mb-12">Our Memories</h2>
       <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 max-w-5xl mx-auto">
         {photos.map((p, i) => (
           <motion.img key={p.id} src={p.url} alt={p.caption ?? ''}
@@ -135,7 +389,7 @@ function Story({ media, onFinale }: { media: any[]; onFinale: () => void }) {
       <div className="text-center mt-16">
         <button onClick={onFinale}
           className="bg-gradient-to-r from-[#FF4F81] to-[#8A2BE2] px-10 py-4 rounded-full font-semibold text-lg hover:scale-105 transition">
-          See Your Final Surprise 🎆
+          See Your Final Surprise
         </button>
       </div>
     </section>
@@ -155,3 +409,15 @@ function FloatingParticles() {
     </div>
   )
 }
+EOF
+
+echo ""
+echo "✅ Done. Project created in ./$APP"
+echo "Next steps:"
+echo "  1. cd $APP"
+echo "  2. Fill in .env.local with your Supabase keys"
+echo "  3. Run schema.sql in the Supabase SQL editor"
+echo "  4. Create 'media' and 'music' storage buckets (private)"
+echo "  5. npm run dev"
+echo ""
+echo "To zip it:  zip -r $APP.zip $APP"
