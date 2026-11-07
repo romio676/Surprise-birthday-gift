@@ -1,0 +1,1347 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070709" />
+  <title>A 3D Birthday Universe — For Malemnganbi Chanu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070709;
+      --gold: #dfb26b;
+      --gold-light: #fbe5b8;
+      --gold-dark: #8e682e;
+      --gold-glow: rgba(223, 178, 107, 0.45);
+      --text: #f7f3ed;
+      --text-muted: #a69e94;
+      --font-serif: "Cormorant Garamond", Georgia, serif;
+      --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: "Space Grotesk", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100%;
+      overflow-x: hidden;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scroll Track Container */
+    #scroll-track {
+      height: 700vh;
+      position: relative;
+      width: 100%;
+      pointer-events: none;
+    }
+
+    /* Fixed Viewport Stage */
+    #cinematic-stage {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100svh;
+      overflow: hidden;
+      pointer-events: auto;
+      z-index: 1;
+      background: radial-gradient(circle at 50% 50%, #15131e 0%, #070709 100%);
+    }
+
+    /* Video Canvas / Video Layer */
+    .video-viewport {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    video.hero-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      opacity: 0.96;
+      filter: contrast(1.05) saturate(1.1);
+      transform: scale(1.001);
+      transition: opacity 0.4s ease;
+    }
+
+    /* Cinematic Film Vignette & Color Grade Overlays */
+    .film-vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 35%, rgba(7, 7, 9, 0.7) 80%, rgba(7, 7, 9, 0.95) 100%),
+                  linear-gradient(180deg, rgba(7, 7, 9, 0.6) 0%, transparent 25%, transparent 75%, rgba(7, 7, 9, 0.8) 100%);
+    }
+
+    .film-grain {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: radial-gradient(#fff 1px, transparent 1px);
+      background-size: 3px 3px;
+    }
+
+    /* Three.js / Interactive Canvas Particle Layer */
+    #particle-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    /* Top Navigation Bar */
+    header.hud-topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      padding: 24px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: auto;
+    }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .monogram {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid rgba(223, 178, 107, 0.4);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-serif);
+      font-size: 19px;
+      font-weight: 600;
+      background: rgba(18, 16, 24, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: var(--gold-light);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: #dfd8ce;
+    }
+
+    nav.chapter-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(14, 13, 20, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 5px 8px;
+      border-radius: 999px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: #a79f94;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 7px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .nav-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .nav-btn.active {
+      color: #070709;
+      background: linear-gradient(135deg, var(--gold-light), var(--gold));
+      font-weight: 600;
+      box-shadow: 0 2px 14px var(--gold-glow);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hud-btn {
+      background: rgba(14, 13, 20, 0.65);
+      border: 1px solid rgba(223, 178, 107, 0.35);
+      color: var(--gold-light);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+    }
+
+    .hud-btn:hover {
+      background: rgba(223, 178, 107, 0.15);
+      border-color: var(--gold);
+      transform: translateY(-1px);
+    }
+
+    .hud-btn.active {
+      background: var(--gold);
+      color: #070709;
+      font-weight: 600;
+    }
+
+    /* Rotated Vertical Progress Meter (Right Side) */
+    .scroll-progress-sidebar {
+      position: fixed;
+      right: 36px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .meter-label {
+      writing-mode: vertical-lr;
+      transform: rotate(180deg);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--gold);
+      opacity: 0.85;
+    }
+
+    .meter-track {
+      width: 2px;
+      height: 140px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(180deg, var(--gold-light), var(--gold));
+      box-shadow: 0 0 10px var(--gold);
+      transition: height 0.05s linear;
+    }
+
+    .meter-val {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Content Chapters Stage */
+    .chapters-container {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chapter-pane {
+      position: absolute;
+      width: 100%;
+      max-width: 900px;
+      padding: 0 32px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(30px) scale(0.97);
+      transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .chapter-pane.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .eyebrow-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 18px;
+      padding: 6px 16px;
+      background: rgba(15, 14, 22, 0.5);
+      border: 1px solid rgba(223, 178, 107, 0.25);
+      border-radius: 999px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .eyebrow-badge span.dot {
+      width: 5px;
+      height: 5px;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--gold);
+    }
+
+    h1.chapter-title, h2.chapter-title {
+      font-family: var(--font-serif);
+      font-weight: 500;
+      font-size: clamp(2.8rem, 6.5vw, 5.2rem);
+      line-height: 1.04;
+      letter-spacing: -0.025em;
+      margin-bottom: 20px;
+      text-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
+    }
+
+    h1.chapter-title em, h2.chapter-title em {
+      font-style: normal;
+      background: linear-gradient(120deg, #fff9f0 0%, var(--gold-light) 40%, var(--gold) 85%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: inline-block;
+    }
+
+    p.chapter-desc {
+      font-size: clamp(14px, 1.8vw, 17px);
+      line-height: 1.8;
+      color: #dfd8cf;
+      max-width: 620px;
+      margin: 0 auto 28px;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+    }
+
+    /* Luxury Glassmorphic Card for Letter */
+    .letter-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+      border: 1px solid rgba(223, 178, 107, 0.3);
+      border-radius: 24px;
+      padding: clamp(24px, 4vw, 42px);
+      max-width: 680px;
+      margin: 0 auto 26px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: relative;
+      text-align: left;
+    }
+
+    .quote-glyph {
+      font-family: var(--font-serif);
+      font-size: 80px;
+      line-height: 0.6;
+      color: var(--gold);
+      opacity: 0.6;
+      margin-bottom: 12px;
+    }
+
+    .letter-body {
+      font-family: var(--font-serif);
+      font-size: clamp(18px, 2.2vw, 23px);
+      line-height: 1.7;
+      color: #f7f2ea;
+      margin-bottom: 20px;
+    }
+
+    .letter-sig {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 20px;
+      color: var(--gold);
+      text-align: right;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      border: none;
+      text-decoration: none;
+    }
+
+    .action-btn.gold {
+      background: linear-gradient(135deg, var(--gold-light), var(--gold) 70%, var(--gold-dark));
+      color: #070709;
+      box-shadow: 0 10px 30px rgba(223, 178, 107, 0.35);
+    }
+
+    .action-btn.gold:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 14px 40px rgba(223, 178, 107, 0.5);
+    }
+
+    .action-btn.outline {
+      background: rgba(14, 13, 20, 0.6);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .action-btn.outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--gold);
+      color: var(--gold-light);
+      transform: translateY(-2px);
+    }
+
+    /* Wish Feedback Toast */
+    .wish-toast {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--gold-light);
+      margin-top: 14px;
+      min-height: 20px;
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 10px var(--gold);
+    }
+
+    /* Bottom Interactive Scrubber Bar & Status Footer */
+    footer.hud-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      padding: 18px 36px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: auto;
+      background: linear-gradient(0deg, rgba(7, 7, 9, 0.85) 0%, rgba(7, 7, 9, 0) 100%);
+    }
+
+    .scrubber-wrap {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .scrubber-btn {
+      background: rgba(18, 16, 24, 0.7);
+      border: 1px solid rgba(223, 178, 107, 0.3);
+      color: var(--gold-light);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.2s;
+    }
+
+    .scrubber-btn:hover {
+      background: var(--gold);
+      color: #070709;
+      transform: scale(1.05);
+    }
+
+    .timeline-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .timeline-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-light));
+      border-radius: 999px;
+      box-shadow: 0 0 12px var(--gold);
+      transition: width 0.05s linear;
+    }
+
+    .timeline-markers {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .timeline-marker {
+      width: 1px;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .footer-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: #8c8378;
+      text-transform: uppercase;
+    }
+
+    .footer-meta .recipient-pill {
+      color: var(--gold-light);
+      font-weight: 500;
+    }
+
+    /* Personalization Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 4, 6, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .editor-dialog {
+      background: linear-gradient(145deg, rgba(25, 22, 34, 0.95), rgba(12, 11, 18, 0.98));
+      border: 1px solid rgba(223, 178, 107, 0.4);
+      box-shadow: 0 25px 90px rgba(0, 0, 0, 0.9), 0 0 40px rgba(223, 178, 107, 0.15);
+      border-radius: 24px;
+      padding: 32px;
+      width: min(100%, 600px);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .editor-dialog-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .editor-dialog-head h3 {
+      font-family: var(--font-serif);
+      font-size: 28px;
+      color: var(--gold-light);
+    }
+
+    .close-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: var(--text);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .form-group input, .form-group textarea {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: #fff;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus, .form-group textarea:focus {
+      border-color: var(--gold);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    /* Sparkle Burst Particles */
+    .burst-particle {
+      position: fixed;
+      width: 6px;
+      height: 6px;
+      background: var(--gold-light);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 99;
+      box-shadow: 0 0 10px var(--gold);
+      animation: burstAnim 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes burstAnim {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--dx), var(--dy)) scale(0.1);
+      }
+    }
+
+    /* Mobile Responsive adjustments */
+    @media (max-width: 768px) {
+      header.hud-topbar {
+        padding: 16px 20px;
+      }
+      nav.chapter-nav {
+        display: none;
+      }
+      .scroll-progress-sidebar {
+        right: 14px;
+      }
+      .meter-track {
+        height: 90px;
+      }
+      footer.hud-footer {
+        padding: 14px 20px 18px;
+      }
+      h1.chapter-title, h2.chapter-title {
+        font-size: 2.3rem;
+      }
+      p.chapter-desc {
+        font-size: 14px;
+      }
+      .letter-card {
+        padding: 20px;
+      }
+      .letter-body {
+        font-size: 17px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hidden Audio Stream -->
+  <audio id="ambient-audio" loop preload="auto" src="assets/birthday-music.mp3"></audio>
+
+  <!-- Physical Scroll Space (Scrub Ruler) -->
+  <div id="scroll-track"></div>
+
+  <!-- Fixed Interactive Cinematic Stage -->
+  <div id="cinematic-stage">
+    
+    <!-- 3D Video Viewport -->
+    <div class="video-viewport">
+      <video id="birthday-video" class="hero-video" playsinline muted preload="auto" src="assets/birthday-film.mp4"></video>
+    </div>
+
+    <!-- Vignette & Luxury Atmospheric Color Grade -->
+    <div class="film-vignette"></div>
+    <div class="film-grain"></div>
+
+    <!-- Three.js / Canvas Interactive Fairy Dust & Starfield -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Top HUD Navigation Bar -->
+    <header class="hud-topbar">
+      <a class="brand-mark" href="#pane-cake" id="brand-home-link" aria-label="Return to beginning">
+        <div class="monogram">M</div>
+        <span class="brand-title">MALEMNGANBI</span>
+      </a>
+
+      <nav class="chapter-nav" aria-label="Timeline chapters">
+        <button class="nav-btn active" id="btn-chapter-0" type="button">01 Cake</button>
+        <button class="nav-btn" id="btn-chapter-1" type="button">02 Letter</button>
+        <button class="nav-btn" id="btn-chapter-2" type="button">03 Gift</button>
+        <button class="nav-btn" id="btn-chapter-3" type="button">04 Finale</button>
+      </nav>
+
+      <div class="top-actions">
+        <button class="hud-btn" id="sound-toggle-btn" type="button" aria-label="Toggle ambient music">♫ <span>Sound: Off</span></button>
+        <button class="hud-btn" id="edit-wishes-btn" type="button" aria-label="Personalize wishes">✎ <span>Edit</span></button>
+      </div>
+    </header>
+
+    <!-- Rotated Vertical Progress Sidebar -->
+    <div class="scroll-progress-sidebar">
+      <span class="meter-label">SCROLL Scrub</span>
+      <div class="meter-track">
+        <div class="meter-fill" id="sidebar-meter-fill"></div>
+      </div>
+      <span class="meter-val" id="sidebar-meter-pct">0%</span>
+    </div>
+
+    <!-- Chapter Typography & Interactive Elements (Synchronized to 3D Film) -->
+    <div class="chapters-container">
+
+      <!-- CHAPTER 1: THE CAKE (0% - 25% Scroll, 0.0s - 2.5s Film) -->
+      <section class="chapter-pane active" id="pane-cake">
+        <div class="eyebrow-badge">
+          <span class="dot"></span>
+          <span>01 / THE OPENING · A CELEBRATION OF YOU</span>
+        </div>
+        <h1 class="chapter-title" id="display-hero-title">Happy Birthday,<br><em id="display-recipient-1">Malemnganbi Chanu.</em></h1>
+        <p class="chapter-desc" id="display-hero-sub">Tonight, the stars gather and the candles glow for you. Every flame carries a wish, and every moment is yours.</p>
+        <div style="display: flex; gap: 12px; justify-content: center; align-items: center; margin-top: 10px;">
+          <button class="action-btn gold" id="btn-scroll-start" type="button">Explore Your Universe <span>↓</span></button>
+        </div>
+      </section>
+
+      <!-- CHAPTER 2: THE LETTER (25% - 50% Scroll, 2.5s - 5.0s Film) -->
+      <section class="chapter-pane" id="pane-letter">
+        <div class="eyebrow-badge">
+          <span class="dot"></span>
+          <span>02 / WORDS FROM THE HEART</span>
+        </div>
+        <h2 class="chapter-title">For your <em>journey.</em></h2>
+        <article class="letter-card">
+          <div class="quote-glyph">“</div>
+          <p class="letter-body" id="display-letter-text">May your life be filled with happiness, good health, gentle laughter, and all the dreams you hold dear. Keep shining in your own wonderful, radiant way. You are loved more than words can say.</p>
+          <div class="letter-sig" id="display-letter-from">With all our love, always ♡</div>
+        </article>
+      </section>
+
+      <!-- CHAPTER 3: THE GIFT (50% - 75% Scroll, 5.0s - 7.5s Film) -->
+      <section class="chapter-pane" id="pane-gift">
+        <div class="eyebrow-badge">
+          <span class="dot"></span>
+          <span>03 / A SPARK OF WONDER</span>
+        </div>
+        <h2 class="chapter-title">Unwrap a little <em>happiness.</em></h2>
+        <p class="chapter-desc" id="display-gift-desc">A new year of life brings 365 new chances to smile, explore, grow, and create unforgettable memories.</p>
+        <div style="margin-top: 14px;">
+          <button class="action-btn gold" id="btn-make-wish" type="button">Make a Birthday Wish <span>✦</span></button>
+          <p class="wish-toast" id="wish-toast-msg" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <!-- CHAPTER 4: THE FINALE (75% - 100% Scroll, 7.5s - 10.0s Film) -->
+      <section class="chapter-pane" id="pane-finale">
+        <div class="eyebrow-badge">
+          <span class="dot"></span>
+          <span>04 / THE FINAL TOAST</span>
+        </div>
+        <h2 class="chapter-title">Above <em>everything.</em></h2>
+        <p class="chapter-desc" id="display-finale-desc">May the universe always find new ways to make you smile, today and for all the years to come.</p>
+        <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 16px;">
+          <button class="action-btn gold" id="btn-replay-journey" type="button">Experience Again <span>↻</span></button>
+          <button class="action-btn outline" id="btn-open-editor" type="button">Personalize Message <span>✎</span></button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Bottom HUD Scrubber & Editorial Status Bar -->
+    <footer class="hud-footer">
+      <div class="scrubber-wrap">
+        <button class="scrubber-btn" id="btn-toggle-play" type="button" aria-label="Auto play / pause">▶</button>
+        <div class="timeline-bar" id="timeline-scrubber" role="slider" aria-label="Timeline scrubber" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="timeline-fill" id="timeline-fill"></div>
+          <div class="timeline-markers">
+            <div class="timeline-marker" style="left: 25%;"></div>
+            <div class="timeline-marker" style="left: 50%;"></div>
+            <div class="timeline-marker" style="left: 75%;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-meta">
+        <span>© 2026 — CINEMATIC 3D CELEBRATION</span>
+        <span class="recipient-pill" id="footer-recipient">MALEMNGANBI CHANU</span>
+        <span id="footer-chapter-name">CHAPTER 01 / 04</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Personalization Modal -->
+  <div class="modal-backdrop" id="personalization-modal">
+    <div class="editor-dialog">
+      <div class="editor-dialog-head">
+        <h3>Personalize Celebration</h3>
+        <button class="close-btn" id="modal-close-btn" type="button" aria-label="Close">×</button>
+      </div>
+      <form id="personalization-form">
+        <div class="form-group">
+          <label for="input-recipient">Recipient Name</label>
+          <input type="text" id="input-recipient" required />
+        </div>
+        <div class="form-group">
+          <label for="input-hero-sub">Welcome Message</label>
+          <textarea id="input-hero-sub" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="input-letter">Birthday Letter</label>
+          <textarea id="input-letter" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="input-from">Sign-off / From</label>
+          <input type="text" id="input-from" />
+        </div>
+        <div class="form-group">
+          <label for="input-gift">Gift Message</label>
+          <textarea id="input-gift" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="input-finale">Finale Wish</label>
+          <textarea id="input-finale" rows="2"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="action-btn gold" type="submit" id="btn-save-wishes">Save Wishes</button>
+          <button class="action-btn outline" type="button" id="btn-reset-defaults">Reset Defaults</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const DEFAULTS = {
+        recipient: "Malemnganbi Chanu",
+        heroSub: "Tonight, the stars gather and the candles glow for you. Every flame carries a wish, and every moment is yours.",
+        letter: "May your life be filled with happiness, good health, gentle laughter, and all the dreams you hold dear. Keep shining in your own wonderful, radiant way. You are loved more than words can say.",
+        from: "With all our love, always ♡",
+        gift: "A new year of life brings 365 new chances to smile, explore, grow, and create unforgettable memories.",
+        finale: "May the universe always find new ways to make you smile, today and for all the years to come."
+      };
+
+      let data = loadStoredData();
+
+      function loadStoredData() {
+        try {
+          const saved = localStorage.getItem('malemnganbi_3d_content');
+          if (saved) return Object.assign({}, DEFAULTS, JSON.parse(saved));
+        } catch (e) {
+          console.warn('Storage unavailable', e);
+        }
+        return Object.assign({}, DEFAULTS);
+      }
+
+      function applyData() {
+        document.title = 'A 3D Birthday Universe — For ' + data.recipient;
+        const r1 = document.getElementById('display-recipient-1');
+        if (r1) r1.textContent = data.recipient + '.';
+        const fRec = document.getElementById('footer-recipient');
+        if (fRec) fRec.textContent = data.recipient.toUpperCase();
+        const heroSub = document.getElementById('display-hero-sub');
+        if (heroSub) heroSub.textContent = data.heroSub;
+        const letterText = document.getElementById('display-letter-text');
+        if (letterText) letterText.textContent = data.letter;
+        const letterFrom = document.getElementById('display-letter-from');
+        if (letterFrom) letterFrom.textContent = data.from;
+        const giftDesc = document.getElementById('display-gift-desc');
+        if (giftDesc) giftDesc.textContent = data.gift;
+        const finaleDesc = document.getElementById('display-finale-desc');
+        if (finaleDesc) finaleDesc.textContent = data.finale;
+      }
+
+      // DOM Elements
+      const video = document.getElementById('birthday-video');
+      const audio = document.getElementById('ambient-audio');
+      const meterFill = document.getElementById('sidebar-meter-fill');
+      const meterPct = document.getElementById('sidebar-meter-pct');
+      const timelineFill = document.getElementById('timeline-fill');
+      const footerChapter = document.getElementById('footer-chapter-name');
+      const soundBtn = document.getElementById('sound-toggle-btn');
+      const playBtn = document.getElementById('btn-toggle-play');
+      const timelineScrubber = document.getElementById('timeline-scrubber');
+
+      const chapterPanes = [
+        document.getElementById('pane-cake'),
+        document.getElementById('pane-letter'),
+        document.getElementById('pane-gift'),
+        document.getElementById('pane-finale')
+      ];
+
+      const navBtns = [
+        document.getElementById('btn-chapter-0'),
+        document.getElementById('btn-chapter-1'),
+        document.getElementById('btn-chapter-2'),
+        document.getElementById('btn-chapter-3')
+      ];
+
+      const chapterNames = [
+        "CHAPTER 01 / CAKE",
+        "CHAPTER 02 / LETTER",
+        "CHAPTER 03 / GIFT",
+        "CHAPTER 04 / FINALE"
+      ];
+
+      const CHAPTER_BREAKPOINTS = [0, 0.25, 0.50, 0.75, 1.0];
+
+      // Video & Scrubbing State
+      let videoDuration = 9.958;
+      let targetProgress = 0;
+      let currentProgress = 0;
+      let isAutoPlaying = false;
+      let autoPlaySpeed = 0.0018;
+      let soundPlaying = false;
+      let isDraggingTimeline = false;
+
+      // Video duration detection
+      video.addEventListener('loadedmetadata', function () {
+        if (video.duration && !isNaN(video.duration)) {
+          videoDuration = video.duration;
+        }
+      });
+
+      // Fast seek handler for buttery smooth scrubbing
+      let isSeeking = false;
+      let queuedTime = null;
+
+      video.addEventListener('seeked', function () {
+        isSeeking = false;
+        if (queuedTime !== null) {
+          const t = queuedTime;
+          queuedTime = null;
+          seekVideo(t);
+        }
+      });
+
+      function seekVideo(time) {
+        if (isSeeking) {
+          queuedTime = time;
+        } else {
+          isSeeking = true;
+          try {
+            video.currentTime = Math.max(0, Math.min(videoDuration - 0.04, time));
+          } catch (err) {
+            isSeeking = false;
+          }
+        }
+      }
+
+      // Scroll listener
+      function onScroll() {
+        if (isAutoPlaying || isDraggingTimeline) return;
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        if (maxScroll <= 0) return;
+        targetProgress = Math.max(0, Math.min(1, window.scrollY / maxScroll));
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+
+      // Chapter Jump helper
+      function scrollToProgress(pct) {
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        targetProgress = pct;
+        window.scrollTo({
+          top: pct * maxScroll,
+          behavior: 'smooth'
+        });
+      }
+
+      // Nav Button listeners
+      navBtns[0].addEventListener('click', function () { scrollToProgress(0.02); });
+      navBtns[1].addEventListener('click', function () { scrollToProgress(0.35); });
+      navBtns[2].addEventListener('click', function () { scrollToProgress(0.60); });
+      navBtns[3].addEventListener('click', function () { scrollToProgress(0.88); });
+
+      const brandLink = document.getElementById('brand-home-link');
+      if (brandLink) {
+        brandLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          scrollToProgress(0);
+        });
+      }
+
+      const scrollStartBtn = document.getElementById('btn-scroll-start');
+      if (scrollStartBtn) {
+        scrollStartBtn.addEventListener('click', function () {
+          scrollToProgress(0.35);
+        });
+      }
+
+      const replayBtn = document.getElementById('btn-replay-journey');
+      if (replayBtn) {
+        replayBtn.addEventListener('click', function () {
+          scrollToProgress(0);
+        });
+      }
+
+      // Timeline Scrubber Click & Drag
+      function handleScrub(e) {
+        const rect = timelineScrubber.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        targetProgress = pct;
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        window.scrollTo({
+          top: pct * maxScroll,
+          behavior: 'instant'
+        });
+      }
+
+      timelineScrubber.addEventListener('mousedown', function (e) {
+        isDraggingTimeline = true;
+        handleScrub(e);
+      });
+
+      timelineScrubber.addEventListener('touchstart', function (e) {
+        isDraggingTimeline = true;
+        handleScrub(e);
+      }, { passive: true });
+
+      window.addEventListener('mousemove', function (e) {
+        if (isDraggingTimeline) handleScrub(e);
+      });
+
+      window.addEventListener('touchmove', function (e) {
+        if (isDraggingTimeline) handleScrub(e);
+      }, { passive: true });
+
+      window.addEventListener('mouseup', function () {
+        isDraggingTimeline = false;
+      });
+
+      window.addEventListener('touchend', function () {
+        isDraggingTimeline = false;
+      });
+
+      // Auto Play Toggle
+      playBtn.addEventListener('click', function () {
+        isAutoPlaying = !isAutoPlaying;
+        if (isAutoPlaying) {
+          playBtn.textContent = '⏸';
+          playBtn.style.background = 'var(--gold)';
+          playBtn.style.color = '#070709';
+          if (!soundPlaying) toggleSound();
+        } else {
+          playBtn.textContent = '▶';
+          playBtn.style.background = '';
+          playBtn.style.color = '';
+        }
+      });
+
+      // Sound Toggle
+      function toggleSound() {
+        if (!soundPlaying) {
+          audio.play().then(function () {
+            soundPlaying = true;
+            soundBtn.innerHTML = '♫ <span>Sound: On</span>';
+            soundBtn.classList.add('active');
+          }).catch(function () {
+            soundPlaying = false;
+          });
+        } else {
+          audio.pause();
+          soundPlaying = false;
+          soundBtn.innerHTML = '♫ <span>Sound: Off</span>';
+          soundBtn.classList.remove('active');
+        }
+      }
+      soundBtn.addEventListener('click', toggleSound);
+
+      // Make a Wish interaction
+      const wishBtn = document.getElementById('btn-make-wish');
+      const wishToast = document.getElementById('wish-toast-msg');
+      if (wishBtn) {
+        wishBtn.addEventListener('click', function (e) {
+          triggerSparkleBurst(e.clientX || window.innerWidth / 2, e.clientY || window.innerHeight / 2);
+          if (wishToast) {
+            wishToast.textContent = '✨ Your wish is carrying light into the stars. ✦';
+          }
+        });
+      }
+
+      function triggerSparkleBurst(x, y) {
+        const count = 36;
+        for (let i = 0; i < count; i++) {
+          const p = document.createElement('div');
+          p.className = 'burst-particle';
+          const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+          const dist = 60 + Math.random() * 120;
+          p.style.left = x + 'px';
+          p.style.top = y + 'px';
+          p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+          p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+          document.body.appendChild(p);
+          setTimeout(function () { p.remove(); }, 900);
+        }
+      }
+
+      // Animation & Scrubbing Engine
+      function renderLoop() {
+        if (isAutoPlaying) {
+          targetProgress += autoPlaySpeed;
+          if (targetProgress > 1) targetProgress = 0;
+          const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+          window.scrollTo({ top: targetProgress * maxScroll, behavior: 'instant' });
+        }
+
+        // Smooth Lerp
+        currentProgress += (targetProgress - currentProgress) * 0.14;
+        if (Math.abs(targetProgress - currentProgress) < 0.0005) {
+          currentProgress = targetProgress;
+        }
+
+        // Scrub video time
+        const targetVideoTime = currentProgress * videoDuration;
+        seekVideo(targetVideoTime);
+
+        // Update UI meters
+        const pctString = Math.round(currentProgress * 100) + '%';
+        if (meterFill) meterFill.style.height = pctString;
+        if (meterPct) meterPct.textContent = pctString;
+        if (timelineFill) timelineFill.style.width = pctString;
+        if (timelineScrubber) timelineScrubber.setAttribute('aria-valuenow', Math.round(currentProgress * 100));
+
+        // Active Chapter Calculation
+        let activeIdx = 0;
+        if (currentProgress < 0.25) activeIdx = 0;
+        else if (currentProgress < 0.50) activeIdx = 1;
+        else if (currentProgress < 0.75) activeIdx = 2;
+        else activeIdx = 3;
+
+        chapterPanes.forEach(function (pane, idx) {
+          if (idx === activeIdx) pane.classList.add('active');
+          else pane.classList.remove('active');
+        });
+
+        navBtns.forEach(function (btn, idx) {
+          if (idx === activeIdx) btn.classList.add('active');
+          else btn.classList.remove('active');
+        });
+
+        if (footerChapter) {
+          footerChapter.textContent = chapterNames[activeIdx];
+        }
+
+        requestAnimationFrame(renderLoop);
+      }
+
+      // Three.js / Canvas Interactive Fairy Dust & Star Particles
+      function initParticles() {
+        const canvas = document.getElementById('particle-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        const count = Math.min(80, Math.floor(window.innerWidth / 16));
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            radius: Math.random() * 1.8 + 0.4,
+            speedY: Math.random() * 0.45 + 0.15,
+            speedX: (Math.random() - 0.5) * 0.2,
+            alpha: Math.random() * 0.5 + 0.2,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+
+        let mouseX = width / 2;
+        let mouseY = height / 2;
+        window.addEventListener('mousemove', function (e) {
+          mouseX = e.clientX;
+          mouseY = e.clientY;
+        }, { passive: true });
+
+        let t = 0;
+        function drawParticles() {
+          t += 0.015;
+          ctx.clearRect(0, 0, width, height);
+
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.y -= p.speedY;
+            p.x += p.speedX;
+
+            if (p.y < -10) {
+              p.y = height + 10;
+              p.x = Math.random() * width;
+            }
+            if (p.x < -10) p.x = width + 10;
+            if (p.x > width + 10) p.x = -10;
+
+            // Parallax shift toward mouse
+            const dx = (mouseX - width / 2) * 0.015;
+            const dy = (mouseY - height / 2) * 0.015;
+
+            const curAlpha = p.alpha * (0.6 + 0.4 * Math.sin(t + p.phase));
+
+            ctx.beginPath();
+            ctx.arc(p.x + dx, p.y + dy, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(247, 226, 178, ' + curAlpha + ')';
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = 'rgba(223, 178, 107, 0.6)';
+            ctx.fill();
+          }
+
+          requestAnimationFrame(drawParticles);
+        }
+        drawParticles();
+
+        window.addEventListener('resize', function () {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+        });
+      }
+
+      // Personalization Modal Handling
+      const modal = document.getElementById('personalization-modal');
+      const editBtn = document.getElementById('edit-wishes-btn');
+      const openEditorBtn = document.getElementById('btn-open-editor');
+      const closeBtn = document.getElementById('modal-close-btn');
+      const form = document.getElementById('personalization-form');
+      const resetBtn = document.getElementById('btn-reset-defaults');
+
+      function openModal() {
+        document.getElementById('input-recipient').value = data.recipient;
+        document.getElementById('input-hero-sub').value = data.heroSub;
+        document.getElementById('input-letter').value = data.letter;
+        document.getElementById('input-from').value = data.from;
+        document.getElementById('input-gift').value = data.gift;
+        document.getElementById('input-finale').value = data.finale;
+        modal.classList.add('open');
+      }
+
+      function closeModal() {
+        modal.classList.remove('open');
+      }
+
+      if (editBtn) editBtn.addEventListener('click', openModal);
+      if (openEditorBtn) openEditorBtn.addEventListener('click', openModal);
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+      modal.addEventListener('mousedown', function (e) {
+        if (e.target === modal) closeModal();
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        data = {
+          recipient: document.getElementById('input-recipient').value.trim() || DEFAULTS.recipient,
+          heroSub: document.getElementById('input-hero-sub').value.trim() || DEFAULTS.heroSub,
+          letter: document.getElementById('input-letter').value.trim() || DEFAULTS.letter,
+          from: document.getElementById('input-from').value.trim() || DEFAULTS.from,
+          gift: document.getElementById('input-gift').value.trim() || DEFAULTS.gift,
+          finale: document.getElementById('input-finale').value.trim() || DEFAULTS.finale
+        };
+        try {
+          localStorage.setItem('malemnganbi_3d_content', JSON.stringify(data));
+        } catch (err) {
+          console.warn('Storage save failed', err);
+        }
+        applyData();
+        closeModal();
+      });
+
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+          data = Object.assign({}, DEFAULTS);
+          try {
+            localStorage.removeItem('malemnganbi_3d_content');
+          } catch (err) {}
+          applyData();
+          openModal();
+        });
+      }
+
+      // Initialize
+      applyData();
+      initParticles();
+      requestAnimationFrame(renderLoop);
+
+    })();
+  </script>
+</body>
+</html>
